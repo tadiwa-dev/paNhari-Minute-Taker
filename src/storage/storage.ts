@@ -8,14 +8,21 @@ export class SqliteKVStore implements IDatabase {
   private db: Database.Database;
 
   constructor(private logger: ILogger, dbPath?: string) {
-    // Use environment variable if set, otherwise use provided dbPath, otherwise use default relative to project root
+    // Use environment variable if set, otherwise use provided dbPath, otherwise use /tmp for Railway/cloud environments
     const resolvedDbPath = process.env.CONVERSATIONS_DB_PATH
       ? path.resolve(process.env.CONVERSATIONS_DB_PATH)
       : dbPath
       ? dbPath
-      : path.resolve(__dirname, "../../src/storage/conversations.db");
-    this.db = new Database(resolvedDbPath);
-    this.initializeDatabase();
+      : path.resolve("/tmp/conversations.db");
+    
+    try {
+      this.db = new Database(resolvedDbPath);
+      this.logger.debug(`✅ Opened SQLite database at: ${resolvedDbPath}`);
+      this.initializeDatabase();
+    } catch (error) {
+      this.logger.error(`❌ Failed to open SQLite database at ${resolvedDbPath}:`, error);
+      throw error;
+    }
   }
 
   async initialize(): Promise<void> {

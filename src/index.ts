@@ -57,7 +57,8 @@ async function initializeStorage() {
       feedbackStorage = storage;
       logger.debug("✅ Storage initialized successfully");
     } catch (error) {
-      logger.error("❌ Configuration error:", error);
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      logger.error("❌ Configuration error: Failed to initialize storage:", errorMessage);
       throw error;
     }
   }

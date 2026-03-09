@@ -24,9 +24,15 @@ export class StorageFactory {
 
     // Use SQLite (default or fallback)
     logger.debug("🔧 Initializing SQLite storage...");
-    storage = new SqliteKVStore(logger.child("sqlite"), dbConfig.sqlitePath);
-    await storage.initialize();
-    logger.debug("✅ SQLite storage initialized successfully");
-    return storage;
+    try {
+      storage = new SqliteKVStore(logger.child("sqlite"), dbConfig.sqlitePath);
+      await storage.initialize();
+      logger.debug("✅ SQLite storage initialized successfully");
+      return storage;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      logger.error("❌ Failed to initialize SQLite storage:", errorMessage);
+      throw new Error(`Storage initialization failed: ${errorMessage}`);
+    }
   }
 }

@@ -914,9 +914,15 @@ var MssqlKVStore = class {
 var SqliteKVStore = class {
   constructor(logger2, dbPath) {
     this.logger = logger2;
-    const resolvedDbPath = process.env.CONVERSATIONS_DB_PATH ? path__default.default.resolve(process.env.CONVERSATIONS_DB_PATH) : dbPath ? dbPath : path__default.default.resolve(__dirname, "../../src/storage/conversations.db");
-    this.db = new Database__default.default(resolvedDbPath);
-    this.initializeDatabase();
+    const resolvedDbPath = process.env.CONVERSATIONS_DB_PATH ? path__default.default.resolve(process.env.CONVERSATIONS_DB_PATH) : dbPath ? dbPath : path__default.default.resolve("/tmp/conversations.db");
+    try {
+      this.db = new Database__default.default(resolvedDbPath);
+      this.logger.debug(`\u2705 Opened SQLite database at: ${resolvedDbPath}`);
+      this.initializeDatabase();
+    } catch (error) {
+      this.logger.error(`\u274C Failed to open SQLite database at ${resolvedDbPath}:`, error);
+      throw error;
+    }
   }
   db;
   async initialize() {
@@ -1081,10 +1087,16 @@ var StorageFactory = class {
       }
     }
     logger2.debug("\u{1F527} Initializing SQLite storage...");
-    storage2 = new SqliteKVStore(logger2.child("sqlite"), dbConfig.sqlitePath);
-    await storage2.initialize();
-    logger2.debug("\u2705 SQLite storage initialized successfully");
-    return storage2;
+    try {
+      storage2 = new SqliteKVStore(logger2.child("sqlite"), dbConfig.sqlitePath);
+      await storage2.initialize();
+      logger2.debug("\u2705 SQLite storage initialized successfully");
+      return storage2;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      logger2.error("\u274C Failed to initialize SQLite storage:", errorMessage);
+      throw new Error(`Storage initialization failed: ${errorMessage}`);
+    }
   }
 };
 
@@ -1214,7 +1226,8 @@ async function initializeStorage() {
       feedbackStorage = storage;
       logger.debug("\u2705 Storage initialized successfully");
     } catch (error) {
-      logger.error("\u274C Configuration error:", error);
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      logger.error("\u274C Configuration error: Failed to initialize storage:", errorMessage);
       throw error;
     }
   }
