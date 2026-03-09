@@ -57,8 +57,9 @@ async function initializeStorage() {
       feedbackStorage = storage;
       logger.debug("✅ Storage initialized successfully");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-      logger.error("❌ Configuration error: Failed to initialize storage:", errorMessage);
+      console.error("❌ FATAL ERROR IN INITIALIZE STORAGE:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(`❌ Configuration error: Failed to initialize storage: ${errorMessage}`);
       throw error;
     }
   }
@@ -134,7 +135,7 @@ if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env
     try {
       await initializeStorage();
     } catch (error) {
-      logger.error("Failed to initialize storage");
+      console.error("❌ Failed to initialize storage during startup:", error);
       process.exit(1);
     }
 
