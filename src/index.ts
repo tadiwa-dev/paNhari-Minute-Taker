@@ -26,20 +26,30 @@ const createTokenFactory = () => {
   };
 };
 
-// Configure authentication using TokenCredentials
-const tokenCredentials: TokenCredentials = {
-  clientId: process.env.CLIENT_ID || "",
-  token: createTokenFactory(),
-};
+// Determine the correct app options based on environment
+const isProduction = process.env.RUNNING_ON_AZURE === "1" || process.env.RAILWAY_ENVIRONMENT !== undefined || (process.env.MicrosoftAppId && process.env.MicrosoftAppPassword);
 
-// Use managed identity in cloud environment, otherwise use devtools plugin for local development
-const options =
-  process.env.BOT_TYPE === "UserAssignedMsi"
-    ? { ...tokenCredentials }
-    : { plugins: [new DevtoolsPlugin()] };
+let appOptions: object;
+if (process.env.BOT_TYPE === "UserAssignedMsi") {
+  // Azure managed identity
+  const tokenCredentials: TokenCredentials = {
+    clientId: process.env.CLIENT_ID || "",
+    token: createTokenFactory(),
+  };
+  appOptions = { ...tokenCredentials };
+} else if (isProduction && process.env.MicrosoftAppId && process.env.MicrosoftAppPassword) {
+  // Production (Railway/cloud) - use app ID/password auth
+  appOptions = {
+    clientId: process.env.MicrosoftAppId,
+    clientSecret: process.env.MicrosoftAppPassword,
+  };
+} else {
+  // Local development only
+  appOptions = { plugins: [new DevtoolsPlugin()] };
+}
 
 const app = new App({
-  ...options,
+  ...appOptions,
   logger,
 });
 
@@ -131,7 +141,7 @@ app.on("install.add", async ({ send }) => {
 if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.FUNCTION_NAME) {
   (async () => {
     const port = process.env.PORT || process.env.port || 3978;
-    
+
     try {
       await initializeStorage();
     } catch (error) {

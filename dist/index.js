@@ -1206,13 +1206,24 @@ var createTokenFactory = () => {
     return tokenResponse.token;
   };
 };
-var tokenCredentials = {
-  clientId: process.env.CLIENT_ID || "",
-  token: createTokenFactory()
-};
-var options = process.env.BOT_TYPE === "UserAssignedMsi" ? { ...tokenCredentials } : { plugins: [new teams_dev.DevtoolsPlugin()] };
+var isProduction = process.env.RUNNING_ON_AZURE === "1" || process.env.RAILWAY_ENVIRONMENT !== void 0 || process.env.MicrosoftAppId && process.env.MicrosoftAppPassword;
+var appOptions;
+if (process.env.BOT_TYPE === "UserAssignedMsi") {
+  const tokenCredentials = {
+    clientId: process.env.CLIENT_ID || "",
+    token: createTokenFactory()
+  };
+  appOptions = { ...tokenCredentials };
+} else if (isProduction && process.env.MicrosoftAppId && process.env.MicrosoftAppPassword) {
+  appOptions = {
+    clientId: process.env.MicrosoftAppId,
+    clientSecret: process.env.MicrosoftAppPassword
+  };
+} else {
+  appOptions = { plugins: [new teams_dev.DevtoolsPlugin()] };
+}
 var app = new teams_apps.App({
-  ...options,
+  ...appOptions,
   logger
 });
 var storage;
@@ -1226,8 +1237,9 @@ async function initializeStorage() {
       feedbackStorage = storage;
       logger.debug("\u2705 Storage initialized successfully");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-      logger.error("\u274C Configuration error: Failed to initialize storage:", errorMessage);
+      console.error("\u274C FATAL ERROR IN INITIALIZE STORAGE:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(`\u274C Configuration error: Failed to initialize storage: ${errorMessage}`);
       throw error;
     }
   }
@@ -1285,7 +1297,7 @@ if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env
     try {
       await initializeStorage();
     } catch (error) {
-      logger.error("Failed to initialize storage");
+      console.error("\u274C Failed to initialize storage during startup:", error);
       process.exit(1);
     }
     await app.start(port);
