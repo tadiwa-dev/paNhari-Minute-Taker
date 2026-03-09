@@ -1,6 +1,6 @@
 import { ManagedIdentityCredential } from "@azure/identity";
 import { TokenCredentials } from "@microsoft/teams.api";
-import { App } from "@microsoft/teams.apps";
+import { App, IActivityContext } from "@microsoft/teams.apps";
 import { ConsoleLogger } from "@microsoft/teams.common";
 import { DevtoolsPlugin } from "@microsoft/teams.dev";
 import { ManagerPrompt } from "./agent/manager";
@@ -78,10 +78,10 @@ const app = new App({
 });
 
 // Global logging for ALL activities to debug connectivity
-app.use(async (context, next) => {
+app.use(async (context: IActivityContext) => {
   const activity = context.activity;
   logger.debug(`🔍 ACTIVITY RECEIVED: { type: ${activity.type}, conversationType: ${activity.conversation?.conversationType}, isGroup: ${activity.conversation?.isGroup} }`);
-  await next();
+  return await context.next();
 });
 
 // Initialize storage
