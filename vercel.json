@@ -4,11 +4,5 @@
   "installCommand": "npm install --no-audit",
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "dist/index.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
   }
 }
