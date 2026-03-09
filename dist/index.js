@@ -2,13 +2,13 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
+var genai = require('@google/genai');
+var teams_ai = require('@microsoft/teams.ai');
+var teams_openai = require('@microsoft/teams.openai');
 var identity = require('@azure/identity');
 var teams_apps = require('@microsoft/teams.apps');
 var teams_common = require('@microsoft/teams.common');
 var teams_dev = require('@microsoft/teams.dev');
-var teams_ai = require('@microsoft/teams.ai');
-var teams_openai = require('@microsoft/teams.openai');
-var genai = require('@google/genai');
 var teams_api = require('@microsoft/teams.api');
 var chrono = require('chrono-node');
 var mssql = require('mssql');
@@ -40,118 +40,84 @@ var mssql__namespace = /*#__PURE__*/_interopNamespace(mssql);
 var Database__default = /*#__PURE__*/_interopDefault(Database);
 var path__default = /*#__PURE__*/_interopDefault(path);
 
-// src/index.ts
-var GeminiChatModel = class {
-  genAI;
-  modelName;
-  apiKey;
-  constructor(config) {
-    this.apiKey = config.apiKey;
-    this.modelName = config.model || "gemini-2.5-flash";
-    this.genAI = new genai.GoogleGenAI({ apiKey: this.apiKey });
-  }
-  async complete(prompt) {
-    try {
-      const result = await this.genAI.models.generateContent({
-        model: this.modelName,
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ]
-      });
-      return result.text;
-    } catch (error) {
-      throw new Error(`Gemini API call failed: ${error}`);
-    }
-  }
-  // Method required by ChatPrompt interface
-  async send(prompt) {
-    try {
-      let promptText = typeof prompt === "string" ? prompt : JSON.stringify(prompt);
-      const result = await this.genAI.models.generateContent({
-        model: this.modelName,
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: promptText }]
-          }
-        ]
-      });
-      return { content: result.text };
-    } catch (error) {
-      throw new Error(`Gemini send failed: ${error}`);
-    }
-  }
-  // Method to handle structured prompts for compatibility with ChatPrompt
-  async completeStructured(messages) {
-    try {
-      const systemMessage = messages.find((msg) => msg.role === "system");
-      const contentMessages = messages.filter((msg) => msg.role !== "system").map((msg) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }]
-      }));
-      const result = await this.genAI.models.generateContent({
-        model: this.modelName,
-        systemInstruction: systemMessage?.content,
-        contents: contentMessages
-      });
-      return result.text;
-    } catch (error) {
-      throw new Error(`Gemini API structured call failed: ${error}`);
-    }
-  }
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var GeminiChatModel;
+var init_geminiModel = __esm({
+  "src/ai/geminiModel.ts"() {
+    GeminiChatModel = class {
+      genAI;
+      modelName;
+      apiKey;
+      constructor(config) {
+        this.apiKey = config.apiKey;
+        this.modelName = config.model || "gemini-2.5-flash";
+        this.genAI = new genai.GoogleGenAI({ apiKey: this.apiKey });
+      }
+      async complete(prompt) {
+        try {
+          const result = await this.genAI.models.generateContent({
+            model: this.modelName,
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: prompt }]
+              }
+            ]
+          });
+          return result.text;
+        } catch (error) {
+          throw new Error(`Gemini API call failed: ${error}`);
+        }
+      }
+      // Method required by ChatPrompt interface
+      async send(prompt) {
+        try {
+          let promptText = typeof prompt === "string" ? prompt : JSON.stringify(prompt);
+          const result = await this.genAI.models.generateContent({
+            model: this.modelName,
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: promptText }]
+              }
+            ]
+          });
+          return { content: result.text };
+        } catch (error) {
+          throw new Error(`Gemini send failed: ${error}`);
+        }
+      }
+      // Method to handle structured prompts for compatibility with ChatPrompt
+      async completeStructured(messages) {
+        try {
+          const systemMessage = messages.find((msg) => msg.role === "system");
+          const contentMessages = messages.filter((msg) => msg.role !== "system").map((msg) => ({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }]
+          }));
+          const result = await this.genAI.models.generateContent({
+            model: this.modelName,
+            systemInstruction: systemMessage?.content,
+            contents: contentMessages
+          });
+          return result.text;
+        } catch (error) {
+          throw new Error(`Gemini API structured call failed: ${error}`);
+        }
+      }
+    };
+  }
+});
 
 // src/utils/config.ts
-var AI_PROVIDER = process.env.AI_PROVIDER || "azure-openai";
-var DATABASE_CONFIG = {
-  type: process.env.RUNNING_ON_AZURE === "1" ? "mssql" : "sqlite",
-  connectionString: process.env.SQL_CONNECTION_STRING,
-  server: process.env.SQL_SERVER,
-  database: process.env.SQL_DATABASE,
-  username: process.env.SQL_USERNAME,
-  password: process.env.SQL_PASSWORD,
-  sqlitePath: process.env.CONVERSATIONS_DB_PATH
-};
-var AI_MODELS = {
-  // Manager Capability - Uses lighter, faster model for routing decisions
-  MANAGER: {
-    model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-flash" : "gpt-4o-mini",
-    apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
-    endpoint: process.env.AOAI_ENDPOINT,
-    apiVersion: "2025-04-01-preview"
-  },
-  // Summarizer Capability - Uses more capable model for complex analysis
-  SUMMARIZER: {
-    model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-pro" : process.env.AOAI_MODEL || "gpt-4o",
-    apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
-    endpoint: process.env.AOAI_ENDPOINT,
-    apiVersion: "2025-04-01-preview"
-  },
-  // Action Items Capability - Uses capable model for analysis and task management
-  ACTION_ITEMS: {
-    model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-pro" : process.env.AOAI_MODEL || "gpt-4o",
-    apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
-    endpoint: process.env.AOAI_ENDPOINT,
-    apiVersion: "2025-04-01-preview"
-  },
-  // Search Capability - Uses capable model for semantic search and deep linking
-  SEARCH: {
-    model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-pro" : process.env.AOAI_MODEL || "gpt-4o",
-    apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
-    endpoint: process.env.AOAI_ENDPOINT,
-    apiVersion: "2025-04-01-preview"
-  },
-  // Default model configuration (fallback)
-  DEFAULT: {
-    model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-pro" : process.env.AOAI_MODEL || "gpt-4o",
-    apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
-    endpoint: process.env.AOAI_ENDPOINT,
-    apiVersion: "2025-04-01-preview"
-  }
-};
 function getModelConfig(capabilityType) {
   switch (capabilityType.toLowerCase()) {
     case "manager":
@@ -199,36 +165,290 @@ function logModelConfigs(logger2) {
   logger2.debug(`  Search Capability: ${AI_MODELS.SEARCH.model}`);
   logger2.debug(`  Default Model: ${AI_MODELS.DEFAULT.model}`);
 }
+var AI_PROVIDER, DATABASE_CONFIG, AI_MODELS;
+var init_config = __esm({
+  "src/utils/config.ts"() {
+    AI_PROVIDER = process.env.AI_PROVIDER || "azure-openai";
+    DATABASE_CONFIG = {
+      type: process.env.RUNNING_ON_AZURE === "1" ? "mssql" : "sqlite",
+      connectionString: process.env.SQL_CONNECTION_STRING,
+      server: process.env.SQL_SERVER,
+      database: process.env.SQL_DATABASE,
+      username: process.env.SQL_USERNAME,
+      password: process.env.SQL_PASSWORD,
+      sqlitePath: process.env.CONVERSATIONS_DB_PATH
+    };
+    AI_MODELS = {
+      // Manager Capability - Uses lighter, faster model for routing decisions
+      MANAGER: {
+        model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-flash" : "gpt-4o-mini",
+        apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
+        endpoint: process.env.AOAI_ENDPOINT,
+        apiVersion: "2025-04-01-preview"
+      },
+      // Summarizer Capability - Uses more capable model for complex analysis
+      SUMMARIZER: {
+        model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-pro" : process.env.AOAI_MODEL || "gpt-4o",
+        apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
+        endpoint: process.env.AOAI_ENDPOINT,
+        apiVersion: "2025-04-01-preview"
+      },
+      // Action Items Capability - Uses capable model for analysis and task management
+      ACTION_ITEMS: {
+        model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-pro" : process.env.AOAI_MODEL || "gpt-4o",
+        apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
+        endpoint: process.env.AOAI_ENDPOINT,
+        apiVersion: "2025-04-01-preview"
+      },
+      // Search Capability - Uses capable model for semantic search and deep linking
+      SEARCH: {
+        model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-pro" : process.env.AOAI_MODEL || "gpt-4o",
+        apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
+        endpoint: process.env.AOAI_ENDPOINT,
+        apiVersion: "2025-04-01-preview"
+      },
+      // Default model configuration (fallback)
+      DEFAULT: {
+        model: AI_PROVIDER === "gemini" ? process.env.GEMINI_MODEL || "gemini-1.5-pro" : process.env.AOAI_MODEL || "gpt-4o",
+        apiKey: AI_PROVIDER === "gemini" ? process.env.GEMINI_API_KEY : process.env.AOAI_API_KEY,
+        endpoint: process.env.AOAI_ENDPOINT,
+        apiVersion: "2025-04-01-preview"
+      }
+    };
+  }
+});
 
 // src/capabilities/capability.ts
-var BaseCapability = class {
-  constructor(logger2) {
-    this.logger = logger2;
+var BaseCapability;
+var init_capability = __esm({
+  "src/capabilities/capability.ts"() {
+    init_config();
+    BaseCapability = class {
+      constructor(logger2) {
+        this.logger = logger2;
+      }
+      /**
+       * Default implementation of processRequest that creates a prompt and sends the request
+       */
+      async processRequest(context) {
+        try {
+          const prompt = this.createPrompt(context);
+          const response = await prompt.send(context.text);
+          return {
+            response: response.content || "No response generated"
+          };
+        } catch (error) {
+          return {
+            response: "",
+            error: error instanceof Error ? error.message : "Unknown error"
+          };
+        }
+      }
+      /**
+       * Helper method to get model configuration
+       */
+      getModelConfig(configKey) {
+        return getModelConfig(configKey);
+      }
+    };
   }
-  /**
-   * Default implementation of processRequest that creates a prompt and sends the request
-   */
-  async processRequest(context) {
-    try {
-      const prompt = this.createPrompt(context);
-      const response = await prompt.send(context.text);
-      return {
-        response: response.content || "No response generated"
-      };
-    } catch (error) {
-      return {
-        response: "",
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
-    }
+});
+
+// src/utils/graph.ts
+var GraphClient;
+var init_graph = __esm({
+  "src/utils/graph.ts"() {
+    GraphClient = class {
+      constructor(logger2) {
+        this.logger = logger2;
+        this.appId = process.env.MicrosoftAppId || process.env.BOT_ID || "";
+        this.appPassword = process.env.MicrosoftAppPassword || "";
+        this.tenantId = process.env.TENANT_ID || "";
+        if (!this.appId || !this.appPassword || !this.tenantId) {
+          this.logger.error("\u274C GraphClient: Missing required environment variables (AppId, AppPassword, or TenantId)");
+        }
+      }
+      appId;
+      appPassword;
+      tenantId;
+      accessToken = null;
+      tokenExpiry = 0;
+      async getAccessToken() {
+        const now = Date.now();
+        if (this.accessToken && now < this.tokenExpiry) {
+          return this.accessToken;
+        }
+        this.logger.debug("\u{1F310} GraphClient: Fetching new access token...");
+        const tokenEndpoint = `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`;
+        const body = new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: this.appId,
+          client_secret: this.appPassword,
+          scope: "https://graph.microsoft.com/.default"
+        });
+        const response = await fetch(tokenEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString()
+        });
+        const data = await response.json();
+        if (!data.access_token) {
+          throw new Error(`GraphClient: Failed to get OAuth token: ${data.error} - ${data.error_description}`);
+        }
+        this.accessToken = data.access_token;
+        this.tokenExpiry = now + data.expires_in * 1e3 - 5 * 60 * 1e3;
+        return this.accessToken;
+      }
+      async getMeetingTranscripts(meetingId) {
+        const token = await this.getAccessToken();
+        const url = `https://graph.microsoft.com/v1.0/onlineMeetings/${meetingId}/transcripts`;
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (!response.ok) {
+          const error = await response.text();
+          this.logger.error(`\u274C GraphClient: Failed to fetch transcripts for meeting ${meetingId}: ${error}`);
+          return [];
+        }
+        const data = await response.json();
+        return data.value || [];
+      }
+      async getTranscriptContent(meetingId, transcriptId) {
+        const token = await this.getAccessToken();
+        const url = `https://graph.microsoft.com/v1.0/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content?$format=text/vtt`;
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (!response.ok) {
+          const error = await response.text();
+          this.logger.error(`\u274C GraphClient: Failed to fetch transcript content for ${transcriptId}: ${error}`);
+          return null;
+        }
+        return await response.text();
+      }
+      /**
+       * Helper to get the most recent transcript for a meeting
+       */
+      async getLatestTranscriptContent(meetingId) {
+        try {
+          this.logger.debug(`\u{1F310} GraphClient: Looking for transcripts for meeting ${meetingId}`);
+          const transcripts = await this.getMeetingTranscripts(meetingId);
+          if (transcripts.length === 0) {
+            this.logger.warn(`\u26A0\uFE0F GraphClient: No transcripts found for meeting ${meetingId}`);
+            return null;
+          }
+          const latestTranscript = transcripts.sort(
+            (a, b) => new Date(b.createdDateTime).getTime() - new Date(a.createdDateTime).getTime()
+          )[0];
+          this.logger.debug(`\u{1F310} GraphClient: Fetching content for transcript ${latestTranscript.id}`);
+          return await this.getTranscriptContent(meetingId, latestTranscript.id);
+        } catch (error) {
+          this.logger.error(`\u274C GraphClient: Error in getLatestTranscriptContent: ${error}`);
+          return null;
+        }
+      }
+    };
   }
-  /**
-   * Helper method to get model configuration
-   */
-  getModelConfig(configKey) {
-    return getModelConfig(configKey);
+});
+
+// src/capabilities/summarizer/meetingMinutes.ts
+var meetingMinutes_exports = {};
+__export(meetingMinutes_exports, {
+  MEETING_MINUTES_CAPABILITY_DEFINITION: () => MEETING_MINUTES_CAPABILITY_DEFINITION,
+  MEETING_MINUTES_PROMPT: () => MEETING_MINUTES_PROMPT,
+  MeetingMinutesCapability: () => MeetingMinutesCapability
+});
+var MEETING_MINUTES_PROMPT, MeetingMinutesCapability, MEETING_MINUTES_CAPABILITY_DEFINITION;
+var init_meetingMinutes = __esm({
+  "src/capabilities/summarizer/meetingMinutes.ts"() {
+    init_geminiModel();
+    init_config();
+    init_graph();
+    init_capability();
+    MEETING_MINUTES_PROMPT = `
+You are an expert meeting assistant. Your task is to generate concise and professional meeting minutes from a provided transcript.
+The minutes should include:
+1. **Meeting Overview**: Purpose and key participants (if identifiable).
+2. **Main Discussion Points**: Summary of the key topics discussed.
+3. **Decisions Made**: Clear list of any formal or informal decisions.
+4. **Action Items**: Specific tasks assigned, to whom, and deadlines (if mentioned).
+
+Formatting: Use professional Markdown with bold headers and bullet points.
+`;
+    MeetingMinutesCapability = class extends BaseCapability {
+      name = "meetingMinutes";
+      graphClient;
+      constructor(logger2) {
+        super(logger2);
+        this.graphClient = new GraphClient(logger2);
+      }
+      createPrompt(_context) {
+        const config = this.getModelConfig("summarizer");
+        const model = AI_PROVIDER === "gemini" ? new GeminiChatModel({
+          apiKey: config.apiKey,
+          model: config.model
+        }) : new teams_openai.OpenAIChatModel({
+          model: config.model,
+          apiKey: config.apiKey,
+          endpoint: config.endpoint,
+          apiVersion: config.apiVersion
+        });
+        return new teams_ai.ChatPrompt({
+          instructions: MEETING_MINUTES_PROMPT,
+          model
+        });
+      }
+      async generateFromTranscript(meetingId) {
+        try {
+          this.logger.debug(`\u{1F4C4} MeetingMinutes: Fetching transcript for meeting ${meetingId}`);
+          const transcript = await this.graphClient.getLatestTranscriptContent(meetingId);
+          if (!transcript) {
+            return "I couldn't find a transcript for this meeting. Please make sure transcription was enabled.";
+          }
+          this.logger.debug(`\u{1F4C4} MeetingMinutes: Generating minutes from transcript (${transcript.length} chars)`);
+          const config = this.getModelConfig("summarizer");
+          const model = AI_PROVIDER === "gemini" ? new GeminiChatModel({
+            apiKey: config.apiKey,
+            model: config.model
+          }) : new teams_openai.OpenAIChatModel({
+            model: config.model,
+            apiKey: config.apiKey,
+            endpoint: config.endpoint,
+            apiVersion: config.apiVersion
+          });
+          const prompt = `${MEETING_MINUTES_PROMPT}
+
+Transcript:
+${transcript}`;
+          const result = await model.complete(prompt);
+          return result || "Failed to generate meeting minutes.";
+        } catch (error) {
+          this.logger.error(`\u274C MeetingMinutes: Error generating minutes: ${error}`);
+          return `An error occurred while generating meeting minutes: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      }
+    };
+    MEETING_MINUTES_CAPABILITY_DEFINITION = {
+      name: "meetingMinutes",
+      manager_desc: `**Meeting Minutes**: Use when the user asks for "meeting minutes", "transcript summary", or to "summarize the last meeting". Use this when they reference a specific meeting or the most recent one.`,
+      handler: async (_context, _logger) => {
+        return "I am configured to automatically generate minutes at the end of meetings. If you need minutes for a specific meeting, please provide the meeting ID.";
+      }
+    };
   }
-};
+});
+
+// src/agent/manager.ts
+init_geminiModel();
+
+// src/capabilities/actionItems/actionItems.ts
+init_geminiModel();
+init_config();
+init_capability();
 
 // src/capabilities/actionItems/prompt.ts
 var ACTION_ITEMS_PROMPT = `
@@ -319,6 +539,11 @@ var ACTION_ITEMS_CAPABILITY_DEFINITION = {
     return result.response || "No response from Action Items Capability";
   }
 };
+
+// src/capabilities/search/search.ts
+init_geminiModel();
+init_config();
+init_capability();
 
 // src/capabilities/search/prompt.ts
 var SEARCH_PROMPT = `
@@ -448,6 +673,11 @@ var SEARCH_CAPABILITY_DEFINITION = {
   }
 };
 
+// src/capabilities/summarizer/summarize.ts
+init_geminiModel();
+init_config();
+init_capability();
+
 // src/capabilities/summarizer/prompt.ts
 var SUMMARY_PROMPT = `
 You are the Summarizer capability of the Collaborator that specializes in analyzing conversations between groups of people.
@@ -523,11 +753,16 @@ var SUMMARIZER_CAPABILITY_DEFINITION = {
 };
 
 // src/capabilities/registry.ts
+init_meetingMinutes();
 var CAPABILITY_DEFINITIONS = [
   SUMMARIZER_CAPABILITY_DEFINITION,
   ACTION_ITEMS_CAPABILITY_DEFINITION,
-  SEARCH_CAPABILITY_DEFINITION
+  SEARCH_CAPABILITY_DEFINITION,
+  MEETING_MINUTES_CAPABILITY_DEFINITION
 ];
+
+// src/agent/manager.ts
+init_config();
 function finalizePromptResponse(text, context, logger2) {
   const messageActivity = new teams_api.MessageActivity(text).addAiGenerated().addFeedback();
   if (context.citations && context.citations.length > 0) {
@@ -685,6 +920,9 @@ var ManagerPrompt = class {
     }
   }
 };
+
+// src/storage/storageFactory.ts
+init_config();
 var MssqlKVStore = class {
   constructor(logger2, config) {
     this.logger = logger2;
@@ -1100,6 +1338,9 @@ var StorageFactory = class {
   }
 };
 
+// src/index.ts
+init_config();
+
 // src/storage/conversationMemory.ts
 var ConversationMemory = class {
   constructor(store, conversationId) {
@@ -1313,6 +1554,28 @@ app.on("install.add", async ({ send }) => {
   await send(
     "\u{1F44B} Hi! I'm the Collab Agent \u{1F680}. I'll listen to the conversation and can provide summaries, action items, or search for a message when asked!"
   );
+});
+app.on("meeting.end", async ({ activity, send }) => {
+  try {
+    const meetingId = activity.value?.meetingId;
+    if (!meetingId) {
+      logger.warn("\u26A0\uFE0F Meeting end event received but no meetingId found.");
+      return;
+    }
+    logger.debug(`\u{1F3C1} Meeting ended: ${meetingId}. Fetching transcripts...`);
+    await new Promise((resolve) => setTimeout(resolve, 3e4));
+    const { MeetingMinutesCapability: MeetingMinutesCapability2 } = await Promise.resolve().then(() => (init_meetingMinutes(), meetingMinutes_exports));
+    const minutesCapability = new MeetingMinutesCapability2(logger.child("meetingMinutes_auto"));
+    await send({ type: "typing" });
+    const minutes = await minutesCapability.generateFromTranscript(meetingId);
+    const title = activity.value?.meetingTitle || "Meeting";
+    await send(`## \u{1F4CB} Minutes for ${title}
+
+${minutes}`);
+    logger.debug(`\u2705 Successfully posted minutes for meeting ${meetingId}`);
+  } catch (error) {
+    logger.error(`\u274C Error processing meeting end: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
 });
 if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.FUNCTION_NAME) {
   (async () => {
