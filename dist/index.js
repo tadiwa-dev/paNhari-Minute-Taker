@@ -1533,7 +1533,9 @@ app.on("message.submit.feedback", async ({ activity }) => {
   }
 });
 app.on("message", async ({ send, activity, api }) => {
+  const isGroup = activity.conversation.isGroup;
   const botMentioned = activity.entities?.some((e) => e.type === "mention");
+  logger.debug(`\u{1F4E9} Message received. Group: ${isGroup}, Mentioned: ${botMentioned}, Activity Type: ${activity.type}`);
   const context = botMentioned ? await createMessageContext(storage, activity, api) : await createMessageContext(storage, activity);
   let trackedMessages;
   if (!activity.conversation.isGroup || botMentioned) {
@@ -1555,26 +1557,30 @@ app.on("install.add", async ({ send }) => {
     "\u{1F44B} Hi! I'm the Collab Agent \u{1F680}. I'll listen to the conversation and can provide summaries, action items, or search for a message when asked!"
   );
 });
-app.on("meeting.end", async ({ activity, send }) => {
+app.on("meetingEnd", async ({ activity, send }) => {
   try {
-    const meetingId = activity.value?.meetingId;
+    const value = activity.value;
+    const meetingId = value?.id;
+    const meetingTitle = value?.title || "Meeting";
+    logger.debug(`\u{1F3C1} Meeting end event received: ${meetingId} (${meetingTitle})`);
     if (!meetingId) {
-      logger.warn("\u26A0\uFE0F Meeting end event received but no meetingId found.");
+      logger.warn("\u26A0\uFE0F Meeting end event received but no meeting ID found in activity.value.");
+      logger.debug(JSON.stringify(activity, null, 3));
       return;
     }
-    logger.debug(`\u{1F3C1} Meeting ended: ${meetingId}. Fetching transcripts...`);
+    logger.debug(`\u{1F552} Waiting 30s for transcript to finalize...`);
     await new Promise((resolve) => setTimeout(resolve, 3e4));
     const { MeetingMinutesCapability: MeetingMinutesCapability2 } = await Promise.resolve().then(() => (init_meetingMinutes(), meetingMinutes_exports));
     const minutesCapability = new MeetingMinutesCapability2(logger.child("meetingMinutes_auto"));
     await send({ type: "typing" });
     const minutes = await minutesCapability.generateFromTranscript(meetingId);
-    const title = activity.value?.meetingTitle || "Meeting";
-    await send(`## \u{1F4CB} Minutes for ${title}
+    await send(`## \u{1F4CB} Minutes for ${meetingTitle}
 
 ${minutes}`);
     logger.debug(`\u2705 Successfully posted minutes for meeting ${meetingId}`);
   } catch (error) {
-    logger.error(`\u274C Error processing meeting end: ${error instanceof Error ? error.message : "Unknown error"}`);
+    logger.error(`\u274C Error processing meetingEnd: ${error instanceof Error ? error.message : "Unknown error"}`);
+    logger.debug(error instanceof Error ? error.stack : "");
   }
 });
 if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.FUNCTION_NAME) {
