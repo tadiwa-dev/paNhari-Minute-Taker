@@ -47,6 +47,23 @@ const app = new App({
 let storage: IDatabase;
 let feedbackStorage: IDatabase;
 
+// Initialize storage at module load (for Vercel support)
+async function initializeStorage() {
+  if (!storage) {
+    try {
+      validateEnvironment(logger);
+      logModelConfigs(logger);
+      storage = await StorageFactory.createStorage(logger.child("storage"));
+      feedbackStorage = storage;
+      logger.debug("✅ Storage initialized successfully");
+    } catch (error) {
+      logger.error("❌ Configuration error:", error);
+      throw error;
+    }
+  }
+  return storage;
+}
+
 app.on("message.submit.feedback", async ({ activity }) => {
   try {
     const { reaction, feedback: feedbackJson } = activity.value.actionValue;
@@ -110,17 +127,11 @@ app.on("install.add", async ({ send }) => {
 
 (async () => {
   const port = process.env.PORT || process.env.port || 3978;
+  
   try {
-    validateEnvironment(logger);
-    logModelConfigs(logger);
-
-    // Initialize storage
-    storage = await StorageFactory.createStorage(logger.child("storage"));
-    feedbackStorage = storage;
-
-    logger.debug("✅ Storage initialized successfully");
+    await initializeStorage();
   } catch (error) {
-    logger.error("❌ Configuration error:", error);
+    logger.error("Failed to initialize storage");
     process.exit(1);
   }
 
@@ -128,3 +139,7 @@ app.on("install.add", async ({ send }) => {
 
   logger.debug(`🚀 Collab Agent started on port ${port}`);
 })();
+
+// Export for serverless environments (e.g., Vercel)
+export { app, initializeStorage };
+export default app;
