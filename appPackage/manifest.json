@@ -1,0 +1,59 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.24/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.24",
+    "version": "1.0.0",
+    "id": "${{TEAMS_APP_ID}}",
+    "developer": {
+        "name": "My App, Inc.",
+        "websiteUrl": "https://www.example.com",
+        "privacyUrl": "https://www.example.com/privacy",
+        "termsOfUseUrl": "https://www.example.com/termofuse"
+    },
+    "icons": {
+        "color": "color.png",
+        "outline": "outline.png"
+    },
+    "name": {
+        "short": "paNhari-Minute-Taker${{APP_NAME_SUFFIX}}",
+        "full": "paNhari Meeting Minute Taker - Automatic Transcripts to Action Items"
+    },
+    "description": {
+        "short": "Automatically generate meeting minutes from Teams conversations and transcripts",
+        "full": "Analyzes meeting transcripts and conversations to generate summaries, extract action items, search discussions, and create meeting minutes with automatic speaker attribution."
+    },
+    "accentColor": "#FFFFFF",
+    "bots": [
+        {
+            "botId": "${{BOT_ID}}",
+            "scopes": [
+                "personal",
+                "team",
+                "groupChat"
+            ],
+            "supportsFiles": false,
+            "isNotificationOnly": false
+        }
+    ],
+    "validDomains": [
+        "${{BOT_DOMAIN}}",
+        "*.botframework.com"
+    ],
+    "webApplicationInfo": {
+        "id": "${{BOT_ID}}",
+        "resource": "api://botid-${{BOT_ID}}"
+    },
+    "authorization": {
+        "permissions": {
+            "resourceSpecific": [
+                {
+                    "name": "ChatMessage.Read.Chat", 
+                    "type": "Application"
+                },
+                {
+                    "name": "OnlineMeetingTranscript.Read.All",
+                    "type": "Application"
+                }
+            ]
+        }
+    }
+}
