@@ -1490,6 +1490,11 @@ var app = new teams_apps.App({
   ...appOptions,
   logger
 });
+app.use(async (context, next) => {
+  const activity = context.activity;
+  logger.debug(`\u{1F50D} ACTIVITY RECEIVED: { type: ${activity.type}, conversationType: ${activity.conversation?.conversationType}, isGroup: ${activity.conversation?.isGroup} }`);
+  await next();
+});
 var storage;
 var feedbackStorage;
 async function initializeStorage() {

@@ -77,6 +77,13 @@ const app = new App({
   logger,
 });
 
+// Global logging for ALL activities to debug connectivity
+app.use(async (context, next) => {
+  const activity = context.activity;
+  logger.debug(`🔍 ACTIVITY RECEIVED: { type: ${activity.type}, conversationType: ${activity.conversation?.conversationType}, isGroup: ${activity.conversation?.isGroup} }`);
+  await next();
+});
+
 // Initialize storage
 let storage: IDatabase;
 let feedbackStorage: IDatabase;

@@ -1,13 +1,13 @@
 {
     "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.24/MicrosoftTeams.schema.json",
     "manifestVersion": "1.24",
-    "version": "1.0.0",
+    "version": "1.0.6",
     "id": "3d0c4261-a00b-4f98-b2ef-197df52eda9f",
     "developer": {
         "name": "paNhari",
-        "websiteUrl": "https://pa-nhari-minute-taker.vercel.app",
-        "privacyUrl": "https://pa-nhari-minute-taker.vercel.app/privacy",
-        "termsOfUseUrl": "https://pa-nhari-minute-taker.vercel.app/terms"
+        "websiteUrl": "https://panhari-minute-taker-production.up.railway.app",
+        "privacyUrl": "https://panhari-minute-taker-production.up.railway.app/privacy",
+        "termsOfUseUrl": "https://panhari-minute-taker-production.up.railway.app/terms"
     },
     "icons": {
         "color": "color.png",
@@ -35,7 +35,7 @@
         }
     ],
     "validDomains": [
-        "pa-nhari-minute-taker.vercel.app",
+        "panhari-minute-taker-production.up.railway.app",
         "*.botframework.com"
     ],
     "webApplicationInfo": {
@@ -46,7 +46,7 @@
         "permissions": {
             "resourceSpecific": [
                 {
-                    "name": "ChatMessage.Read.Chat", 
+                    "name": "ChatMessage.Read.Chat",
                     "type": "Application"
                 },
                 {
@@ -56,8 +56,19 @@
                 {
                     "name": "Chat.Read.Chat",
                     "type": "Application"
+                },
+                {
+                    "name": "MeetingMeetingDetail.Read.Chat",
+                    "type": "Application"
+                },
+                {
+                    "name": "ChannelMessage.Read.Group",
+                    "type": "Application"
                 }
             ]
         }
+    },
+    "meetingExtensionDefinition": {
+        "supportsStreaming": true
     }
 }
