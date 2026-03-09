@@ -38,10 +38,34 @@ if (process.env.BOT_TYPE === "UserAssignedMsi") {
   };
   appOptions = { ...tokenCredentials };
 } else if (isProduction && process.env.MicrosoftAppId && process.env.MicrosoftAppPassword) {
-  // Production (Railway/cloud) - use app ID/password auth
+  // Production (Railway/cloud) - implement proper OAuth token factory
+  const appId = process.env.MicrosoftAppId!;
+  const appPassword = process.env.MicrosoftAppPassword!;
+  const tokenFactory = async (scope: string | string[]): Promise<string> => {
+    const resolvedScope = Array.isArray(scope) ? scope.join(' ') : scope;
+    // Use tenant-specific endpoint for single-tenant, botframework.com for multi-tenant
+    const tenantId = process.env.TENANT_ID || 'botframework.com';
+    const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: appId,
+      client_secret: appPassword,
+      scope: resolvedScope || 'https://api.botframework.com/.default',
+    });
+    const response = await fetch(tokenEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+    const data = await response.json() as { access_token?: string; error?: string; error_description?: string };
+    if (!data.access_token) {
+      throw new Error(`Failed to get OAuth token: ${data.error} - ${data.error_description}`);
+    }
+    return data.access_token;
+  };
   appOptions = {
-    clientId: process.env.MicrosoftAppId,
-    clientSecret: process.env.MicrosoftAppPassword,
+    clientId: appId,
+    token: tokenFactory,
   };
 } else {
   // Local development only
