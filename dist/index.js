@@ -1,5 +1,7 @@
 'use strict';
 
+Object.defineProperty(exports, '__esModule', { value: true });
+
 var identity = require('@azure/identity');
 var teams_apps = require('@microsoft/teams.apps');
 var teams_common = require('@microsoft/teams.common');
@@ -1203,6 +1205,21 @@ var app = new teams_apps.App({
 });
 var storage;
 var feedbackStorage;
+async function initializeStorage() {
+  if (!storage) {
+    try {
+      validateEnvironment(logger);
+      logModelConfigs(logger);
+      storage = await StorageFactory.createStorage(logger.child("storage"));
+      feedbackStorage = storage;
+      logger.debug("\u2705 Storage initialized successfully");
+    } catch (error) {
+      logger.error("\u274C Configuration error:", error);
+      throw error;
+    }
+  }
+  return storage;
+}
 app.on("message.submit.feedback", async ({ activity }) => {
   try {
     const { reaction, feedback: feedbackJson } = activity.value.actionValue;
@@ -1249,20 +1266,23 @@ app.on("install.add", async ({ send }) => {
     "\u{1F44B} Hi! I'm the Collab Agent \u{1F680}. I'll listen to the conversation and can provide summaries, action items, or search for a message when asked!"
   );
 });
-(async () => {
-  const port = process.env.PORT || process.env.port || 3978;
-  try {
-    validateEnvironment(logger);
-    logModelConfigs(logger);
-    storage = await StorageFactory.createStorage(logger.child("storage"));
-    feedbackStorage = storage;
-    logger.debug("\u2705 Storage initialized successfully");
-  } catch (error) {
-    logger.error("\u274C Configuration error:", error);
-    process.exit(1);
-  }
-  await app.start(port);
-  logger.debug(`\u{1F680} Collab Agent started on port ${port}`);
-})();
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.FUNCTION_NAME) {
+  (async () => {
+    const port = process.env.PORT || process.env.port || 3978;
+    try {
+      await initializeStorage();
+    } catch (error) {
+      logger.error("Failed to initialize storage");
+      process.exit(1);
+    }
+    await app.start(port);
+    logger.debug(`\u{1F680} Collab Agent started on port ${port}`);
+  })();
+}
+var index_default = app;
+
+exports.app = app;
+exports.default = index_default;
+exports.initializeStorage = initializeStorage;
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

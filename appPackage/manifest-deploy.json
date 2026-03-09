@@ -1,0 +1,63 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.24/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.24",
+    "version": "1.0.0",
+    "id": "3d0c4261-a00b-4f98-b2ef-197df52eda9f",
+    "developer": {
+        "name": "paNhari",
+        "websiteUrl": "https://pa-nhari-minute-taker.vercel.app",
+        "privacyUrl": "https://pa-nhari-minute-taker.vercel.app/privacy",
+        "termsOfUseUrl": "https://pa-nhari-minute-taker.vercel.app/terms"
+    },
+    "icons": {
+        "color": "color.png",
+        "outline": "outline.png"
+    },
+    "name": {
+        "short": "paNhari Minute Taker",
+        "full": "paNhari Meeting Minute Taker - Automatic Transcripts to Action Items"
+    },
+    "description": {
+        "short": "Automatically generate meeting minutes from Teams conversations and transcripts",
+        "full": "Analyzes meeting transcripts and conversations to generate summaries, extract action items, search discussions, and create meeting minutes with automatic speaker attribution."
+    },
+    "accentColor": "#FFFFFF",
+    "bots": [
+        {
+            "botId": "3d0c4261-a00b-4f98-b2ef-197df52eda9f",
+            "scopes": [
+                "personal",
+                "team",
+                "groupChat"
+            ],
+            "supportsFiles": false,
+            "isNotificationOnly": false
+        }
+    ],
+    "validDomains": [
+        "pa-nhari-minute-taker.vercel.app",
+        "*.botframework.com"
+    ],
+    "webApplicationInfo": {
+        "id": "3d0c4261-a00b-4f98-b2ef-197df52eda9f",
+        "resource": "api://botid-3d0c4261-a00b-4f98-b2ef-197df52eda9f"
+    },
+    "authorization": {
+        "permissions": {
+            "resourceSpecific": [
+                {
+                    "name": "ChatMessage.Read.Chat", 
+                    "type": "Application"
+                },
+                {
+                    "name": "OnlineMeetingTranscript.Read.Chat",
+                    "type": "Application"
+                },
+                {
+                    "name": "Chat.Read.Chat",
+                    "type": "Application"
+                }
+            ]
+        }
+    }
+}

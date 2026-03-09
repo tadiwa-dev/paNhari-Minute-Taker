@@ -125,20 +125,23 @@ app.on("install.add", async ({ send }) => {
   );
 });
 
-(async () => {
-  const port = process.env.PORT || process.env.port || 3978;
-  
-  try {
-    await initializeStorage();
-  } catch (error) {
-    logger.error("Failed to initialize storage");
-    process.exit(1);
-  }
+// Only start the server if NOT in a serverless environment (Vercel, Lambda, etc.)
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.FUNCTION_NAME) {
+  (async () => {
+    const port = process.env.PORT || process.env.port || 3978;
+    
+    try {
+      await initializeStorage();
+    } catch (error) {
+      logger.error("Failed to initialize storage");
+      process.exit(1);
+    }
 
-  await app.start(port);
+    await app.start(port);
 
-  logger.debug(`🚀 Collab Agent started on port ${port}`);
-})();
+    logger.debug(`🚀 Collab Agent started on port ${port}`);
+  })();
+}
 
 // Export for serverless environments (e.g., Vercel)
 export { app, initializeStorage };

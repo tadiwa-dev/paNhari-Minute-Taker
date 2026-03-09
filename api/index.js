@@ -1,9 +1,13 @@
-// Vercel API handler for the Teams bot
+// Vercel API handler for Teams bot
+const { TeamsAdapter } = require('@microsoft/teams.ai');
+const { BotFrameworkAdapter, TurnContext } = require('botbuilder');
+
 let botApp;
+let adapter;
 let initPromise;
 
 /**
- * Initialize the bot app once and cache it
+ * Initialize the bot app and adapter
  */
 async function initializeBot() {
   if (botApp) return botApp;
@@ -11,9 +15,16 @@ async function initializeBot() {
   if (!initPromise) {
     initPromise = (async () => {
       try {
-        const bot = require('../dist/index.js');
-        botApp = bot.default || bot;
-        console.log('✅ Bot initialized');
+        // Import the bot app
+        const botModule = require('../dist/index.js');
+        botApp = botModule.default || botModule;
+        
+        // Also initialize storage
+        if (botModule.initializeStorage) {
+          await botModule.initializeStorage();
+        }
+        
+        console.log('✅ Bot initialized for Vercel');
         return botApp;
       } catch (error) {
         console.error('❌ Failed to initialize bot:', error);
@@ -33,37 +44,53 @@ module.exports = async (req, res) => {
     // Initialize bot on first request
     const app = await initializeBot();
 
-    // Health check endpoint
-    if (req.method === 'GET' && req.url === '/api') {
+    // Health check for GET requests
+    if (req.method === 'GET') {
       return res.status(200).json({ status: 'Bot is running ✅' });
     }
 
-    // Teams messaging endpoint
-    if (req.method === 'POST' && req.url === '/api') {
-      // The Teams.ai App framework should have Express middleware
-      // or a method to handle the activity
-      if (!req.body || !req.body.type) {
-        return res.status(400).json({ error: 'Invalid activity' });
-      }
-
-      // Send 200 immediately to acknowledge
-      res.status(200).end();
-
-      console.log('📨 Received activity:', req.body.type);
-      
-      // Process the activity in the background
-      // The app should handle routing to the appropriate event handler
-      if (app.adapter && app.adapter.processActivity) {
-        await app.adapter.processActivity(req, res);
-      }
-      
-      return;
+    // Only handle POST requests to the API
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // 404 for other routes
-    res.status(404).json({ error: 'Not found' });
+    // Validate the request has an activity
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'Invalid request body' });
+    }
+
+    // Send immediate 200 response to Teams
+    res.status(200).end();
+
+    // Log the activity type
+    const activityType = req.body.type || 'unknown';
+    console.log(`📨 Processing activity: ${activityType}`);
+
+    // Get the adapter from the app if available
+    // The @microsoft/teams.ai SDK stores the adapter internally
+    if (app.adapter) {
+      try {
+        // Process the activity through the Teams bot adapter
+        await app.adapter.processActivity(req, res, async (context) => {
+          // The activity is now processed by the app's handlers
+        });
+      } catch (error) {
+        console.error('Adapter processing error:', error);
+      }
+    } else {
+      // Fallback: try to access the app's internal adapter
+      console.warn('Adapter not directly accessible, checking for alternative methods');
+      console.log('Request body:', JSON.stringify(req.body).substring(0, 200));
+    }
+
   } catch (error) {
-    console.error('Handler error:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    console.error('❌ Handler error:', error);
+    // Only send error response if headers haven't been sent yet
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
+    }
   }
 };
