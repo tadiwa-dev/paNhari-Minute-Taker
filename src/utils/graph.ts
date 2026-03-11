@@ -1,5 +1,5 @@
 import { ILogger } from "@microsoft/teams.common";
-
+import { ManagedIdentityCredential } from "@azure/identity";
 export interface TranscriptContent {
     content: string;
     meetingId: string;
@@ -18,8 +18,10 @@ export class GraphClient {
         this.appPassword = process.env.MicrosoftAppPassword || process.env.SECRET_BOT_PASSWORD || process.env.CLIENT_SECRET || "";
         this.tenantId = process.env.TENANT_ID || process.env.TEAMS_APP_TENANT_ID || "";
 
-        if (!this.appId || !this.appPassword || !this.tenantId) {
-            this.logger.error("❌ GraphClient: Missing required environment variables (AppId, AppPassword, or TenantId)");
+        const isMsi = process.env.BOT_TYPE === "UserAssignedMsi";
+
+        if (!isMsi && (!this.appId || !this.appPassword || !this.tenantId)) {
+            this.logger.error("❌ GraphClient: Missing required environment variables (AppId, AppPassword, or TenantId) for standard OAuth");
         }
     }
 
@@ -30,6 +32,27 @@ export class GraphClient {
         }
 
         this.logger.debug("🌐 GraphClient: Fetching new access token...");
+
+        if (process.env.BOT_TYPE === "UserAssignedMsi") {
+            try {
+                this.logger.debug("🌐 GraphClient: Using User-Assigned Managed Identity...");
+                const managedIdentityCredential = new ManagedIdentityCredential({
+                    clientId: this.appId || process.env.CLIENT_ID,
+                });
+                
+                const tokenResponse = await managedIdentityCredential.getToken("https://graph.microsoft.com/.default", {
+                    tenantId: this.tenantId || process.env.TENANT_ID,
+                });
+                
+                this.accessToken = tokenResponse.token;
+                this.tokenExpiry = tokenResponse.expiresOnTimestamp;
+                
+                return this.accessToken;
+            } catch (error) {
+                this.logger.error(`❌ GraphClient: Failed to get Managed Identity token: ${error}`);
+                throw new Error(`GraphClient: Failed to get Managed Identity token: ${error}`);
+            }
+        }
 
         const tokenEndpoint = `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`;
         const body = new URLSearchParams({
