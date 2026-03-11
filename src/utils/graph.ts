@@ -83,7 +83,19 @@ export class GraphClient {
 
     async getMeetingTranscripts(meetingId: string): Promise<any[]> {
         const token = await this.getAccessToken();
-        const url = `https://graph.microsoft.com/v1.0/onlineMeetings/${meetingId}/transcripts`;
+        
+        // Teams provides base64 encoded meeting IDs, but Graph API requires decoded strings
+        let decodedMeetingId = meetingId;
+        try {
+            if (/^[A-Za-z0-9+/=]+$/.test(meetingId) && !meetingId.includes("-")) {
+                decodedMeetingId = Buffer.from(meetingId, "base64").toString("utf8");
+                this.logger.debug(`🌐 GraphClient: Decoded meetingId from ${meetingId} -> ${decodedMeetingId}`);
+            }
+        } catch (e) {
+            this.logger.debug(`🌐 GraphClient: Meeting ID was not base64 encoded`);
+        }
+
+        const url = `https://graph.microsoft.com/v1.0/onlineMeetings/${decodedMeetingId}/transcripts`;
 
         const response = await fetch(url, {
             headers: {
@@ -103,7 +115,15 @@ export class GraphClient {
 
     async getTranscriptContent(meetingId: string, transcriptId: string): Promise<string | null> {
         const token = await this.getAccessToken();
-        const url = `https://graph.microsoft.com/v1.0/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content?$format=text/vtt`;
+        
+        let decodedMeetingId = meetingId;
+        try {
+            if (/^[A-Za-z0-9+/=]+$/.test(meetingId) && !meetingId.includes("-")) {
+                decodedMeetingId = Buffer.from(meetingId, "base64").toString("utf8");
+            }
+        } catch (e) {}
+
+        const url = `https://graph.microsoft.com/v1.0/onlineMeetings/${decodedMeetingId}/transcripts/${transcriptId}/content?$format=text/vtt`;
 
         const response = await fetch(url, {
             headers: {
