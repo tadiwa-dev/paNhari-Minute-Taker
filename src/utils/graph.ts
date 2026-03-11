@@ -14,9 +14,9 @@ export class GraphClient {
     private tokenExpiry: number = 0;
 
     constructor(private logger: ILogger) {
-        this.appId = process.env.MicrosoftAppId || process.env.BOT_ID || "";
-        this.appPassword = process.env.MicrosoftAppPassword || "";
-        this.tenantId = process.env.TENANT_ID || "";
+        this.appId = process.env.MicrosoftAppId || process.env.BOT_ID || process.env.CLIENT_ID || "";
+        this.appPassword = process.env.MicrosoftAppPassword || process.env.SECRET_BOT_PASSWORD || process.env.CLIENT_SECRET || "";
+        this.tenantId = process.env.TENANT_ID || process.env.TEAMS_APP_TENANT_ID || "";
 
         if (!this.appId || !this.appPassword || !this.tenantId) {
             this.logger.error("❌ GraphClient: Missing required environment variables (AppId, AppPassword, or TenantId)");
